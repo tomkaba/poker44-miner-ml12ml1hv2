@@ -95,11 +95,23 @@ class Miner(BaseMinerNeuron):
                 timeout=5,
             ).decode().strip()
         except Exception:
-            git_commit = os.getenv("POKER44_MODEL_REPO_COMMIT", "")
+            git_commit = ""
 
         self.model_manifest = build_local_model_manifest(
             repo_root=repo_root,
-            implementation_files=[Path(__file__).resolve()],
+            implementation_files=[
+                repo_root / "weights" / "ml_realbench_1h_v2_seed123_hgb_deep_model.pkl",
+                repo_root / "weights" / "ml_realbench_1h_v2_seed123_hgb_deep_scaler.pkl",
+                Path(__file__).resolve(),
+                repo_root / "poker44" / "__init__.py",
+                repo_root / "poker44" / "base" / "miner.py",
+                repo_root / "poker44" / "base" / "neuron.py",
+                repo_root / "poker44" / "miner_heuristics.py",
+                repo_root / "poker44" / "utils" / "config.py",
+                repo_root / "poker44" / "utils" / "misc.py",
+                repo_root / "poker44" / "utils" / "model_manifest.py",
+                repo_root / "poker44" / "validator" / "synapse.py",
+            ],
             defaults={
                 "model_name": "poker44_ml12ml1hv2",
                 "model_version": "12.2",
@@ -135,6 +147,11 @@ class Miner(BaseMinerNeuron):
             f"Manifest digest={self.manifest_digest} "
             f"inference_mode={self.model_manifest.get('inference_mode', '')}"
         )
+        bt.logging.info(
+            f"Implementation sha256={self.model_manifest.get('implementation_sha256', '')} "
+            f"files={len(self.model_manifest.get('implementation_files', []) or [])}"
+        )
+        bt.logging.info(f"[init] Full response manifest={self.model_manifest}")
         bt.logging.info(f"Project root: {repo_root}")
 
     async def forward(self, synapse: DetectionSynapse) -> DetectionSynapse:
@@ -159,7 +176,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.debug(f"[miner] Received {len(chunks)} chunk(s); first sizes={_preview(chunk_sizes)}")
 
         synapse.risk_scores = scores
-        synapse.predictions = [s >= 0.5 for s in scores]
+        synapse.predictions = [s >= 0.000001 for s in scores]
         synapse.model_manifest = dict(self.model_manifest)
         bt.logging.info(f"[miner] Response manifest={synapse.model_manifest}")
 
